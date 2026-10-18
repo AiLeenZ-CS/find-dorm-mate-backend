@@ -1,0 +1,333 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// D5: Facilities
+// ---------------------------------------------------------
+model D5_Facilities {
+  Facility_ID   Int    @id @default(autoincrement())
+  Facility_Name String @db.VarChar(100)
+  Facility_Type String // 'Dormitory', 'Room'
+
+  Dorms      D3_Dormitories[] @relation("DormToFacility")
+  Room_Types D4_Room_Types[]  @relation("RoomToFacility")
+}
+
+// ---------------------------------------------------------
+// D1: Members
+// ---------------------------------------------------------
+model D1_Members {
+  Member_ID     Int       @id @default(autoincrement())
+  Profile_Image String?   @db.VarChar(255)
+  Username      String    @unique @db.VarChar(50)
+  Email         String    @unique @db.VarChar(100)
+  Password      String    @db.VarChar(255)
+  First_Name    String?   @db.VarChar(50)
+  Last_Name     String?   @db.VarChar(50)
+  Nickname      String?   @db.VarChar(30)
+  Gender        String? // 'Male', 'Female', 'Other'
+  Birthdate     DateTime? @db.Date
+  Phone         String?   @unique @db.VarChar(10)
+
+  User_Role      String @default("Member") // 'Member', 'Admin', 'Master_Admin'
+  Account_Status String @default("Active") // 'Active', 'Suspended'
+
+  Google_ID            String? @db.VarChar(255)
+  Is_Profile_Completed Boolean @default(false)
+
+  Created_At DateTime @default(now())
+  Updated_At DateTime @updatedAt
+
+  Roommate_Posts   D6_Roommate_Posts[]
+  Match_Requests   D7_Roommate_Matches[]
+  Bookings         D8_Bookings[]
+  Reviews          D9_Reviews[]
+  Reports_Received D10_User_Reports[]    @relation("ReportedUser")
+}
+
+// ---------------------------------------------------------
+// D2: Owners (แยกออกจาก D1_Members โดยสมบูรณ์ - มีบัญชี/รหัสผ่านของตัวเอง
+// พร้อมข้อมูลคำร้องขอเป็นเจ้าของหอพักในตัว แทนที่ D2_Identity_Verifications เดิม)
+// ---------------------------------------------------------
+model D2_Owners {
+  Owner_ID      Int     @id @default(autoincrement())
+  Profile_Image String? @db.VarChar(255)
+  Username      String  @unique @db.VarChar(50)
+  Email         String  @unique @db.VarChar(100)
+  Password      String  @db.VarChar(255)
+  First_Name    String? @db.VarChar(50)
+  Last_Name     String? @db.VarChar(50)
+  ID_Card_No    String? @db.VarChar(13)
+  ID_Card_Image String? @db.VarChar(255)
+  Phone         String? @unique @db.VarChar(10)
+
+  Submitted_Date DateTime  @default(now())
+  Approved_Date  DateTime?
+  Admin_Note     String?   @db.Text
+  Status         String    @default("Pending") // 'Pending', 'Approved', 'Rejected'
+  Account_Status String    @default("Active") // 'Active', 'Suspended' - แยกจาก Status (สถานะคำร้อง)
+
+  Google_ID String? @db.VarChar(255)
+
+  Dorms D3_Dormitories[]
+}
+
+// ---------------------------------------------------------
+// D3: Dormitories
+// ---------------------------------------------------------
+model D3_Dormitories {
+  Dorm_ID               Int      @id @default(autoincrement())
+  Dorm_Name             String   @db.VarChar(150)
+  Address               String?  @db.Text
+  Ownership_Proof_Image String?  @db.Text
+  Approval_Status       String   @default("Pending") // 'Pending', 'Approved', 'Rejected'
+  Admin_Note            String?  @db.Text // เหตุผลจากแอดมินเวลาปฏิเสธหอพัก
+  Latitude              Decimal? @db.Decimal(10, 8)
+  Longitude             Decimal? @db.Decimal(11, 8)
+  Dorm_Type             String? // 'Male', 'Female', 'Mixed'
+  Dorm_Images           String?  @db.Text
+  Deposit_Fee           Decimal? @db.Decimal(10, 2)
+  Insurance_Fee         Decimal? @db.Decimal(10, 2)
+  Contract_Duration     Int?
+
+  // ✅ ปรับให้เป็น Boolean
+  Is_Pet_Friendly    Boolean @default(false)
+  Is_Smoking_Allowed Boolean @default(false)
+
+  Contact_Info  String? @db.Text
+  Dorm_Status   String  @default("Open") // 'Open', 'Maintenance', 'Closed'
+  Water_Rate    String? @db.VarChar(50)
+  Electric_Rate String? @db.VarChar(50)
+
+  // 🚀 ข้อความแนะนำหอพักแบบยาว ที่เจ้าของพิมพ์เองอิสระ (ต่างจาก Address ที่เป็นที่อยู่ล้วนๆ)
+  Dorm_Description String? @db.Text
+
+  // 🚀 สิ่งอำนวยความสะดวกที่เจ้าของพิมพ์เพิ่มเอง (นอกเหนือจาก Facilities ที่เลือกจาก D5_Facilities)
+  // เก็บเป็น JSON array ของข้อความ เช่น ["ที่จอดรถ 24 ชม.","ร้านซักรีดในตึก"]
+  // ใช้ String @db.Text แบบเดียวกับ Dorm_Images (ไม่ใช้ Prisma Json type) เพื่อให้ตรงกับ
+  // แพทเทิร์นเดิมของโปรเจกต์ที่ Flutter jsonEncode ส่งมาเป็น string แล้ว backend เก็บ/คืนตรงๆ
+  Custom_Facilities String? @db.Text
+
+  Created_At DateTime @default(now())
+  Updated_At DateTime @updatedAt
+
+  Owner_ID Int?
+  Owner    D2_Owners? @relation(fields: [Owner_ID], references: [Owner_ID], onDelete: SetNull)
+
+  Facilities D5_Facilities[]     @relation("DormToFacility")
+  Room_Types D4_Room_Types[]
+  Posts      D6_Roommate_Posts[]
+  Bookings   D8_Bookings[]
+  Reviews    D9_Reviews[]
+}
+
+// ---------------------------------------------------------
+// D4: Room Types
+// ---------------------------------------------------------
+model D4_Room_Types {
+  Room_Type_ID    Int      @id @default(autoincrement())
+  Room_Type_Name  String?  @db.VarChar(255)
+  Room_Type       String?  @db.VarChar(50)
+  Price_Per_Month Decimal? @db.Decimal(10, 2)
+  Total_Rooms     Int?
+  Remaining_Rooms Int?
+  Room_Images     String?  @db.Text
+  Room_Status     String   @default("Available") @db.VarChar(50) // 'Available', 'Full'
+
+  // 🚀 สิ่งอำนวยความสะดวกที่เจ้าของพิมพ์เพิ่มเองสำหรับห้องพักประเภทนี้ (JSON array ของข้อความ)
+  Custom_Facilities String? @db.Text
+
+  Created_At DateTime @default(now())
+  Updated_At DateTime @updatedAt
+
+  Dorm_ID Int?
+  Dorm    D3_Dormitories? @relation(fields: [Dorm_ID], references: [Dorm_ID], onDelete: Cascade)
+
+  Facilities D5_Facilities[]     @relation("RoomToFacility")
+  Posts      D6_Roommate_Posts[]
+  Bookings   D8_Bookings[]
+}
+
+// ---------------------------------------------------------
+// D6: Roommate Posts
+// ---------------------------------------------------------
+model D6_Roommate_Posts {
+  Post_ID Int @id @default(autoincrement())
+
+  Req_Persons     Int     @default(1)
+  // เงื่อนไขการหาผู้เช่าร่วม
+  Req_Gender      String? @db.VarChar(50) // ค่าที่ใส่ได้: 'Male', 'Female', 'Any'
+  Req_Age_Range   String? @db.VarChar(50) // เก็บช่วงอายุ เช่น: '18-22', '20-25', 'Any'
+  Sleep_Time      String? @db.VarChar(50) // ค่าที่ใส่ได้: 'Before midnight', 'After midnight', 'Any'
+  Smoking_Allowed String? @db.VarChar(50) // ค่าที่ใส่ได้: 'Smoking', 'Non_Smoking', 'Any'
+  Pet_Allowed     String? @db.VarChar(50) // ค่าที่ใส่ได้: 'Pet_Friendly', 'No_Pets', 'Any'
+  Cleanliness     String? @db.VarChar(50) // ค่าที่ใส่ได้: 'Very', 'Normal', 'Easy', 'Any'
+
+  Additional_Notes String?  @db.Text
+  Created_At       DateTime @default(now())
+  Post_Status      String   @default("Searching") @db.VarChar(50) // ค่าที่ใส่ได้: 'Searching', 'Found', 'Closed'
+
+  // Foreign Keys
+  Member_ID    Int?
+  Dorm_ID      Int?
+  Room_Type_ID Int?
+  // 🚀 ใบจองที่ยืนยันแล้ว (Confirmed) ที่ผู้โพสต์ใช้เป็นหลักฐานว่า "มีห้องแล้ว" ตอนสร้างประกาศนี้
+  // มีค่า = โพสต์นี้มาจากปุ่ม "ประกาศหารูมเมท" บนใบจองที่ยืนยันแล้ว (แสดง badge "มีห้องแล้ว" ที่ฝั่ง Flutter)
+  // ไม่มีค่า (null) = โพสต์แบบเดิมที่เลือกห้องจาก Bottom Sheet เอง ไม่ผูกกับใบจองจริง
+  Booking_ID   Int?
+
+  // Relations
+  Member    D1_Members?     @relation(fields: [Member_ID], references: [Member_ID], onDelete: Cascade)
+  Dorm      D3_Dormitories? @relation(fields: [Dorm_ID], references: [Dorm_ID], onDelete: Cascade)
+  Room_Type D4_Room_Types?  @relation(fields: [Room_Type_ID], references: [Room_Type_ID], onDelete: Cascade)
+  Booking   D8_Bookings?    @relation(fields: [Booking_ID], references: [Booking_ID], onDelete: SetNull)
+
+  Matches D7_Roommate_Matches[]
+}
+
+// ---------------------------------------------------------
+// D7: Roommate Matches
+// ---------------------------------------------------------
+model D7_Roommate_Matches {
+  Match_ID         Int       @id @default(autoincrement())
+  Match_Status     String    @default("Pending") // 'Pending', 'Matched', 'Rejected'
+  Message_To_Owner String?   @db.Text
+  Response_Date    DateTime?
+  Requested_At     DateTime  @default(now())
+
+  Post_ID   Int?
+  Member_ID Int?
+
+  Post   D6_Roommate_Posts? @relation(fields: [Post_ID], references: [Post_ID], onDelete: Cascade)
+  Member D1_Members?        @relation(fields: [Member_ID], references: [Member_ID], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// D8: Bookings
+// ---------------------------------------------------------
+model D8_Bookings {
+  Booking_ID       Int       @id @default(autoincrement())
+  Expected_Move_In DateTime? @db.Date
+  Note_To_Owner    String?   @db.Text
+  Booking_Status   String    @default("Pending") // 'Pending', 'Confirmed', 'Rejected', 'Cancelled', 'Expired'
+  Reject_Reason    String?   @db.Text
+  Requested_At     DateTime  @default(now())
+  Response_At      DateTime?
+  // 🚀 ใบจองสถานะ Pending จะหมดอายุอัตโนมัติใน 3 วัน — cron job จะตรวจสอบฟิลด์นี้
+  // แล้วคืนสต๊อกห้อง (+1) ให้ถ้ายังไม่มีการตอบรับ/ปฏิเสธจากเจ้าของหอ
+  Expires_At       DateTime?
+
+  Member_ID    Int?
+  Dorm_ID      Int?
+  Room_Type_ID Int?
+
+  Member    D1_Members?     @relation(fields: [Member_ID], references: [Member_ID], onDelete: Cascade)
+  Dorm      D3_Dormitories? @relation(fields: [Dorm_ID], references: [Dorm_ID], onDelete: Cascade)
+  Room_Type D4_Room_Types?  @relation(fields: [Room_Type_ID], references: [Room_Type_ID], onDelete: Cascade)
+
+  Reviews       D9_Reviews[]
+  Reports       D10_User_Reports[]
+  RoommatePosts D6_Roommate_Posts[]
+}
+
+// ---------------------------------------------------------
+// D9: Reviews
+// ---------------------------------------------------------
+model D9_Reviews {
+  Review_ID   Int      @id @default(autoincrement())
+  Rating      Int?
+  Comment     String?  @db.Text
+  Reviewed_At DateTime @default(now())
+
+  Booking_ID Int?
+  Member_ID  Int?
+  Dorm_ID    Int?
+
+  Booking D8_Bookings?    @relation(fields: [Booking_ID], references: [Booking_ID], onDelete: Cascade)
+  Member  D1_Members?     @relation(fields: [Member_ID], references: [Member_ID], onDelete: Cascade)
+  Dorm    D3_Dormitories? @relation(fields: [Dorm_ID], references: [Dorm_ID], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// D10: User Reports
+// ---------------------------------------------------------
+model D10_User_Reports {
+  Report_ID   Int       @id @default(autoincrement())
+  Reason      String?   @db.Text
+  Status      String    @default("Pending") // 'Pending', 'Resolved'
+  Reported_At DateTime  @default(now())
+  Closed_At   DateTime?
+
+  Reported_User_ID Int?
+  Booking_ID       Int?
+
+  // 🚀 ผู้รายงาน — ปัจจุบันมีได้แค่เจ้าของหอ (Owner) เท่านั้น แต่เก็บเป็น polymorphic
+  // (Type + ID ธรรมดา ไม่ทำ relation) ตามแพทเทิร์นเดียวกับ D11_Notifications.Recipient_*
+  // เผื่ออนาคตเปิดให้ Member รายงานได้ด้วย — Owner_ID/Member_ID เป็นคนละ sequence กัน ชนกันได้
+  Reporter_Type String? // 'Owner' (ตอนนี้มีแค่ค่านี้)
+  Reporter_ID   Int?
+
+  Reported_User D1_Members?  @relation("ReportedUser", fields: [Reported_User_ID], references: [Member_ID], onDelete: Cascade)
+  Booking       D8_Bookings? @relation(fields: [Booking_ID], references: [Booking_ID], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// D11: Notifications — ระบบแจ้งเตือนในแอป (In-app, บันทึกคู่กับการยิง Push/FCM เสมอ
+// ดู createNotification ใน Backend/src/utils/notifications.ts)
+// ---------------------------------------------------------
+model D11_Notifications {
+  Notification_ID Int @id @default(autoincrement())
+
+  // 🚀 ไม่ใช้ relation ตรงไปที่ D1_Members/D2_Owners เพราะผู้รับเป็นได้ทั้ง 2 แบบ (polymorphic)
+  // และ Member_ID กับ Owner_ID เป็นคนละ sequence กัน (เลขชนกันได้) ต้องเช็ค Recipient_Type
+  // คู่กับ Recipient_ID เสมอ ห้ามเช็คแค่ ID อย่างเดียว
+  Recipient_Type String // 'Member' หรือ 'Owner'
+  Recipient_ID   Int
+
+  Type  String // เช่น 'Booking_Created', 'Booking_Confirmed', 'Booking_Rejected', 'Booking_Expired',
+  // 'Match_Request_Received', 'Match_Approved', 'Match_Rejected', 'Post_Fully_Matched',
+  // 'Owner_Approved', 'Owner_Rejected', 'Dorm_Approved', 'Dorm_Rejected'
+  Title String  @db.VarChar(200)
+  Body  String? @db.Text
+
+  // 🚀 เส้นทางในแอป (Flutter route) ที่จะพาไปเมื่อกดแจ้งเตือนนี้ เช่น '/my-bookings'
+  Link String? @db.VarChar(255)
+
+  Is_Read    Boolean  @default(false)
+  Created_At DateTime @default(now())
+
+  @@index([Recipient_Type, Recipient_ID, Is_Read])
+}
+
+// ---------------------------------------------------------
+// D12: Device Tokens — เก็บ FCM Token ของแต่ละอุปกรณ์ที่ล็อกอินไว้ สำหรับยิง Push Notification
+// (ดู saveDeviceToken ใน Backend/src/controllers/notification.controller.ts)
+// 🚀 แยกเป็นตารางของตัวเอง ไม่ฝังเป็นฟิลด์เดียวใน D1_Members เพราะ:
+//   1) คนเดียวล็อกอินได้หลายเครื่องพร้อมกัน (มือถือ + แท็บเล็ต) ต้องยิง push ไปทุกเครื่อง
+//   2) ผู้รับแจ้งเตือนเป็นได้ทั้ง Member และ Owner (polymorphic เหมือน D11_Notifications)
+//      ฝังในตาราง D1_Members อย่างเดียวจะไม่รองรับฝั่ง Owner
+// ---------------------------------------------------------
+model D12_Device_Tokens {
+  Token_ID Int @id @default(autoincrement())
+
+  Recipient_Type String // 'Member' หรือ 'Owner'
+  Recipient_ID   Int
+
+  // 🚀 Unique ที่ตัว Token เอง (ไม่ใช่คู่ Recipient+Token) เพราะเครื่องเดียวกันอาจเคยผูกกับ
+  // อีกบัญชีมาก่อน (แชร์เครื่อง/ล็อกเอาท์แล้วเข้าบัญชีอื่น) ต้อง "ย้ายเจ้าของ" Token มาเป็น
+  // บัญชีที่ login ล่าสุดเสมอ ไม่งั้น push จะหลุดไปเข้าบัญชีเก่าที่ไม่ได้ใช้เครื่องนี้แล้ว
+  // (ดู upsert ใน saveDeviceToken)
+  FCM_Token String @unique @db.VarChar(255)
+
+  Platform   String?  @db.VarChar(20) // 'android', 'ios', 'web'
+  Created_At DateTime @default(now())
+  Updated_At DateTime @updatedAt
+
+  @@index([Recipient_Type, Recipient_ID])
+}
