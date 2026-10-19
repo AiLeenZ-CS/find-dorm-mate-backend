@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `d3_dormitories` ADD COLUMN `Dorm_Description` TEXT NULL;
+ALTER TABLE `D3_Dormitories` ADD COLUMN `Dorm_Description` TEXT NULL;

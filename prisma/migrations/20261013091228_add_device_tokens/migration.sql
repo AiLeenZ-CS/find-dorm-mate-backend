@@ -1,5 +1,5 @@
 -- DropIndex
-DROP INDEX `D11_User_Reports_Reporter_ID_fkey` ON `d11_user_reports`;
+DROP INDEX `D11_User_Reports_Reporter_ID_fkey` ON `D11_User_Reports`;
 
 -- CreateTable
 CREATE TABLE `D14_Device_Tokens` (

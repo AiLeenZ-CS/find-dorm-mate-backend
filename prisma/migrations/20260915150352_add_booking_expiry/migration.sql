@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `d9_bookings` ADD COLUMN `Expires_At` DATETIME(3) NULL;
+ALTER TABLE `D9_Bookings` ADD COLUMN `Expires_At` DATETIME(3) NULL;

@@ -35,22 +35,22 @@ CREATE TABLE `D2_Owners` (
 -- 2. Carry over any existing Owner-role members' data into the new table
 INSERT INTO `D2_Owners` (`Profile_Image`, `Username`, `Email`, `Password`, `First_Name`, `Last_Name`, `Phone`, `Google_ID`, `Status`)
 SELECT `Profile_Image`, `Username`, `Email`, `Password`, `First_Name`, `Last_Name`, `Phone`, `Google_ID`, 'Pending'
-FROM `d1_members`
+FROM `D1_Members`
 WHERE `User_Role` = 'Owner';
 
 -- 3. Drop the old identity-verification table (superseded by D2_Owners' own fields)
-ALTER TABLE `d2_identity_verifications` DROP FOREIGN KEY `D2_Identity_Verifications_Member_ID_fkey`;
-DROP TABLE `d2_identity_verifications`;
+ALTER TABLE `D2_Identity_Verifications` DROP FOREIGN KEY `D2_Identity_Verifications_Member_ID_fkey`;
+DROP TABLE `D2_Identity_Verifications`;
 
 -- 4. Re-point Dormitories.Owner_ID from the old Member_ID to the newly created Owner_ID
-ALTER TABLE `d3_dormitories` DROP FOREIGN KEY `D3_Dormitories_Owner_ID_fkey`;
+ALTER TABLE `D3_Dormitories` DROP FOREIGN KEY `D3_Dormitories_Owner_ID_fkey`;
 
-UPDATE `d3_dormitories` d
-JOIN `d1_members` m ON d.Owner_ID = m.Member_ID AND m.User_Role = 'Owner'
+UPDATE `D3_Dormitories` d
+JOIN `D1_Members` m ON d.Owner_ID = m.Member_ID AND m.User_Role = 'Owner'
 JOIN `D2_Owners` o ON o.Email = m.Email
 SET d.Owner_ID = o.Owner_ID;
 
 ALTER TABLE `D3_Dormitories` ADD CONSTRAINT `D3_Dormitories_Owner_ID_fkey` FOREIGN KEY (`Owner_ID`) REFERENCES `D2_Owners`(`Owner_ID`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- 5. Remove the now-migrated Owner-role rows from Members (Members table is Member/Admin only from here on)
-DELETE FROM `d1_members` WHERE `User_Role` = 'Owner';
+DELETE FROM `D1_Members` WHERE `User_Role` = 'Owner';
