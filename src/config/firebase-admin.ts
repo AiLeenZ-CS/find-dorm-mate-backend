@@ -13,13 +13,18 @@ import path from 'path';
 //   FIREBASE_STORAGE_BUCKET="find-dorm-mate.firebasestorage.app"
 // ไม่ต้องตั้งค่าอะไรเพิ่มใน Firebase Console สำหรับ FCM โดยเฉพาะ — แค่โปรเจกต์ Firebase เปิดใช้
 // Cloud Messaging API ไว้แล้ว (ค่าเริ่มต้นเปิดอยู่แล้วสำหรับทุกโปรเจกต์) ก็ยิง push ได้ทันที
+//
+// 🚀 ตอน deploy ขึ้น host (Railway ฯลฯ) จะไม่มีไฟล์ .json นี้อยู่ในเครื่อง (ไม่ได้ commit ขึ้น git)
+// ให้ตั้งค่า FIREBASE_SERVICE_ACCOUNT_JSON แทน โดยเอาเนื้อหาทั้งไฟล์ (เป็น JSON string บรรทัดเดียว)
+// ไปวางเป็นค่า environment variable บน host ตรงๆ — โค้ดจะ parse ตรงนี้แทนการเปิดไฟล์จากดิสก์
 const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 const storageBucket = process.env.FIREBASE_STORAGE_BUCKET;
 
 let bucket: ReturnType<admin.storage.Storage['bucket']> | null = null;
 
 export function isFirebaseAdminConfigured(): boolean {
-  return !!(serviceAccountPath && storageBucket);
+  return !!((serviceAccountPath || serviceAccountJson) && storageBucket);
 }
 
 // 🚀 ใช้ร่วมกันทุกฟีเจอร์ที่ต้องพึ่ง Firebase Admin SDK (Storage proxy, ออก Custom Token
@@ -27,15 +32,15 @@ export function isFirebaseAdminConfigured(): boolean {
 function ensureInitialized(): void {
   if (!isFirebaseAdminConfigured()) {
     throw new Error(
-      'ยังไม่ได้ตั้งค่า FIREBASE_SERVICE_ACCOUNT_PATH / FIREBASE_STORAGE_BUCKET ใน .env — ฟีเจอร์ที่ต้องใช้ Firebase Admin SDK จะยังใช้งานไม่ได้'
+      'ยังไม่ได้ตั้งค่า FIREBASE_SERVICE_ACCOUNT_PATH (หรือ FIREBASE_SERVICE_ACCOUNT_JSON) / FIREBASE_STORAGE_BUCKET ใน .env — ฟีเจอร์ที่ต้องใช้ Firebase Admin SDK จะยังใช้งานไม่ได้'
     );
   }
 
   if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(path.resolve(process.cwd(), serviceAccountPath!)),
-      storageBucket,
-    });
+    const credential = serviceAccountJson
+      ? admin.credential.cert(JSON.parse(serviceAccountJson))
+      : admin.credential.cert(path.resolve(process.cwd(), serviceAccountPath!));
+    admin.initializeApp({ credential, storageBucket });
   }
 }
 
