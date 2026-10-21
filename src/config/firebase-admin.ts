@@ -1,3 +1,6 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ตั้งค่าและ initialize Firebase Admin SDK กลางของระบบ ให้ฟีเจอร์ที่ต้องพึ่ง
+// Firebase (Storage proxy, Custom Token แชท, sync Firestore, Push Notification ผ่าน FCM) เรียกใช้
+// ร่วมกันผ่าน getStorageBucket/getFirebaseAuth/getFirestoreDb/getMessaging
 import admin from 'firebase-admin';
 import path from 'path';
 

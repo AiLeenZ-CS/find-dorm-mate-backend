@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/bookings ทั้งฝั่งสมาชิก (จอง/ดู/ยกเลิก)
+// และฝั่งเจ้าของหอ (ดู/ยืนยัน/ปฏิเสธ/รายงาน) เข้ากับ booking.controller.ts
 import { Router } from 'express';
 import {
     cancelBooking,

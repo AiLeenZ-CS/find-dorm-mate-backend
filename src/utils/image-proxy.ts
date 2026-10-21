@@ -1,12 +1,9 @@
+// 📄 ไฟล์นี้ทำหน้าที่: รวม helper แปลงค่า URL/path รูปภาพระหว่างรูปแบบที่เก็บใน Firebase Storage
+// กับรูปแบบที่ปลอดภัยสำหรับส่งออกไปกับ API response (proxy ref) ใช้ทั้งตอนบันทึกลง DB และตอนส่งข้อมูล
+// ออกให้ client
 // 🚀 แปลง Firebase Storage URL (ที่มี download token ยาวๆ ติดมาด้วย) ให้กลายเป็น
 // path ภายในของเราเอง แล้วเปลี่ยนเป็น "รูปอ้างอิง" ที่ชี้ไปที่ backend proxy ของเราแทน
 // เพื่อไม่ให้ token ของ Firebase หลุดออกไปกับ response ของ API เลย
-//
-// 🔐 สองชั้นความปลอดภัย:
-//   1. เขียน (sanitizeImageInput/sanitizeImageListInput) — ตัด token ออกตั้งแต่ตอนบันทึกลง DB
-//      เหลือแค่ storage path เปล่าๆ เพื่อให้ dump database ออกไปแล้ว copy URL ไปดูรูปตรงๆไม่ได้
-//   2. อ่าน (toImageProxyRef/toImageProxyRefListJson) — แปลง path เป็น proxy ref ก่อนส่งออกไปกับ
-//      API response เสมอ ไม่ส่ง path/URL ดิบออกไปเด็ดขาด
 import { BACKEND_PUBLIC_URL } from '../config/env';
 
 // รูปที่แสดงต่อสาธารณะได้โดยไม่ต้อง login (รูปหอพัก/ห้องพัก/โปรไฟล์) — ให้โหลดผ่าน
@@ -22,10 +19,6 @@ export const ALLOWED_IMAGE_PREFIXES = [
   ...SENSITIVE_IMAGE_PREFIXES,
 ] as const;
 
-// รับได้ทั้ง Firebase download URL เต็มๆ, storage path เปล่าๆ (เผื่ออนาคตเปลี่ยนมาเก็บ path ตรงๆ)
-// และ proxy ref ของเราเอง (ที่ toImageProxyRef สร้างไว้ตอนส่งออกไปให้ client) — เผื่อ client
-// ส่งรูปเดิม (ที่ได้มาจาก GET) กลับมาตอน PATCH โดยไม่ได้เปลี่ยนรูป เช่น หน้าแก้ไขหอพัก/ห้องพัก
-// ที่โชว์รูปเดิมพร้อมให้ลบทีละรูป แล้วส่ง "รายการที่เหลือ" กลับมาทั้งชุด
 export function extractStoragePath(value: string | null | undefined): string | null {
   if (!value) return null;
 

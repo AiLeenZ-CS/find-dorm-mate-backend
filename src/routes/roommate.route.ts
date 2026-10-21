@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/roommates (ประกาศหารูมเมท, ระบบส่ง/อนุมัติคำขอ
+// จับคู่, แชทก่อนจับคู่, จองห้องจากประกาศ) เข้ากับ roommate.controller.ts
 import { Router } from 'express';
 import {
     bookFromPost,

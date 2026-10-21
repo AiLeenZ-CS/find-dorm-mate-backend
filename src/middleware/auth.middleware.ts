@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: รวม Express middleware ตรวจสอบสิทธิ์การเข้าถึง — verifyToken ตรวจ JWT
+// จาก header และ requireRole ตรวจสิทธิ์ตาม role ใช้ guard หน้า route ต่างๆ ทั่วระบบ
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/jwt';

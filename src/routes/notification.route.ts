@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/notifications (ดู/อ่านแจ้งเตือน, จัดการ Device Token
+// สำหรับ FCM) เข้ากับ notification.controller.ts ใช้ได้เฉพาะ Member/Owner
 import { Router } from 'express';
 import {
   deleteDeviceToken,

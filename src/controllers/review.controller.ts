@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบรีวิวหอพัก — สมาชิกเขียน/แก้ไข/ลบรีวิวจากใบจองที่ยืนยันแล้ว
+// และดึงรีวิวของหอพัก (public) พร้อมคะแนนเฉลี่ย
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { parsePagination, buildMeta } from '../utils/pagination';

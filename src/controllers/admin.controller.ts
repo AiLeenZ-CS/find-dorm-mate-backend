@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบจัดการหลังบ้าน (Admin) — ดูแล/อนุมัติสมาชิก เจ้าของหอพัก
+// และหอพัก จัดการรายงานผู้ใช้ บัญชี Admin และสิ่งอำนวยความสะดวกกลาง (Master Facilities)
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';

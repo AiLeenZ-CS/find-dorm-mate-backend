@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบจัดการหอพัก — ดึงรายการ/รายละเอียดหอพักและห้องพัก (public)
+// และให้เจ้าของหอพักสร้าง/แก้ไขหอพัก ประเภทห้องพัก พร้อมสิ่งอำนวยความสะดวก
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { parsePagination, buildMeta } from '../utils/pagination';
@@ -346,8 +348,8 @@ export const getDormFacilities = async (req: Request, res: Response): Promise<vo
 export const createRoomType = async (req: Request, res: Response): Promise<void> => {
     try {
         const {
-            Room_Type_Name, // 🆕 เพิ่มรับค่าชื่อห้องพัก (เช่น ห้อง VIP)
-            Room_Type,      // ✅ ประเภทเพื่อค้นหา (เช่น Air, Fan)
+            Room_Type_Name, 
+            Room_Type,      
             Price_Per_Month, Total_Rooms, Remaining_Rooms,
             Room_Images, Room_Status, Dorm_ID, Facilities, Custom_Facilities
         } = req.body;
@@ -375,7 +377,7 @@ export const createRoomType = async (req: Request, res: Response): Promise<void>
 
         const newRoomType = await prisma.d4_Room_Types.create({
             data: {
-                Room_Type_Name: Room_Type_Name, // 🆕 บันทึกลงตาราง
+                Room_Type_Name: Room_Type_Name, 
                 Room_Type: Room_Type,
                 Price_Per_Month: price,
                 Total_Rooms: totalRooms,

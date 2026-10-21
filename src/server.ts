@@ -1,9 +1,11 @@
+// 📄 ไฟล์นี้ทำหน้าที่: จุดเริ่มต้นของ backend (entry point) — สร้าง Express app, ตั้งค่า CORS,
+// mount route ทุกกลุ่มเข้ากับ path /api/*, และสั่งเริ่ม cron job ตรวจสอบการจองที่หมดอายุ
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.route';
 import dormRoutes from './routes/dorm.route';
-import roommateRoutes from './routes/roommate.route'; // ✅ 1. Import Route รูมเมท
+import roommateRoutes from './routes/roommate.route';
 import bookingRoutes from './routes/booking.route';
 import adminRoutes from './routes/admin.route';
 import notificationRoutes from './routes/notification.route';
@@ -14,15 +16,13 @@ import { PORT, ALLOWED_ORIGINS } from './config/env';
 
 const app = express();
 
-// 🚀 ไม่ตั้งค่า ALLOWED_ORIGINS ใน .env (ตอน dev) = เปิดรับทุก origin เหมือนเดิม
-// ตั้งค่าแล้ว (ตอน deploy จริง) = จำกัดเฉพาะโดเมนที่อนุญาตเท่านั้น
 app.use(cors(ALLOWED_ORIGINS ? { origin: ALLOWED_ORIGINS } : {}));
 app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dorms', dormRoutes);
-app.use('/api/roommates', roommateRoutes); // ✅ 2. เปิดใช้งาน Path /api/roommates
+app.use('/api/roommates', roommateRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);

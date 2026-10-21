@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบหารูมเมท — สร้าง/แก้ไข/ลบประกาศ ส่ง/ตอบรับ/ยกเลิกคำขอจับคู่
+// เปิดห้องแชทผ่าน Firestore และให้จองห้องพักต่อได้เมื่อจับคู่ครบจำนวน
 import { Request, Response } from 'express';
 import admin from 'firebase-admin';
 import { prisma } from '../lib/prisma';

@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/dorms (ดูข้อมูลหอพัก/ห้องพัก/สิ่งอำนวยความสะดวก
+// แบบ public และสร้าง/แก้ไขข้อมูลหอพักฝั่ง Owner) เข้ากับ dorm.controller.ts
 import { Router } from 'express';
 import { createDorm, createRoomType, getAllDorms, getDormById, getDormFacilities, getDormsByOwnerId, getRoomFacilities, getRoomTypeById, updateDorm, updateRoomType } from '../controllers/dorm.controller';
 import { verifyToken, requireRole } from '../middleware/auth.middleware';

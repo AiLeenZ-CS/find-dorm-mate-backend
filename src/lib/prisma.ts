@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: สร้างและ export PrismaClient instance เดียวให้ทุก controller/cron
+// ทั่วทั้งแอป import ไปใช้ร่วมกัน
 import { PrismaClient } from '@prisma/client';
 
 // 🚀 Client เดียวใช้ร่วมกันทั้งแอป — ก่อนหน้านี้แต่ละ controller/cron สร้าง PrismaClient ของตัวเอง

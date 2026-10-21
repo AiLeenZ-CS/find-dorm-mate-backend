@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบจองห้องพัก — สมาชิกจอง/ยกเลิกใบจอง เจ้าของหอดูใบจอง/
+// ยืนยัน/ปฏิเสธ/รายงานผู้จอง พร้อมตัดคืนสต๊อกห้องพักให้ถูกต้องในทุกกรณี
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { createNotification } from '../utils/notifications';
@@ -35,17 +37,22 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // --- 🛡️ ห้ามมีใบจอง Pending ซ้ำสำหรับห้องประเภทเดิม ---
-        const existingBooking = await prisma.d8_Bookings.findFirst({
+        // --- 🛡️ จองได้ทีละห้องเท่านั้น — ห้ามสร้างใบจองใหม่ถ้ายังมีใบจองที่ Pending (รอเจ้าของ
+        // ตอบรับ) หรือ Confirmed (ยืนยันแล้ว) ค้างอยู่ไม่ว่าจะเป็นห้อง/หอไหนก็ตาม ต้องยกเลิกใบจอง
+        // เดิมก่อน หรือรอให้เจ้าของปฏิเสธ/ใบจองหมดอายุ (cron job ปรับเป็น Expired) ถึงจะจองใหม่ได้
+        const activeBooking = await prisma.d8_Bookings.findFirst({
             where: {
                 Member_ID: Number(memberId),
-                Room_Type_ID: Number(roomTypeId),
-                Booking_Status: 'Pending',
+                Booking_Status: { in: ['Pending', 'Confirmed'] },
             },
         });
 
-        if (existingBooking) {
-            res.status(400).json({ message: "คุณมีใบจองที่รอดำเนินการสำหรับห้องพักประเภทนี้อยู่แล้ว" });
+        if (activeBooking) {
+            res.status(400).json({
+                message: activeBooking.Booking_Status === 'Confirmed'
+                    ? "คุณมีห้องพักที่จองและยืนยันแล้วอยู่ ไม่สามารถจองห้องอื่นเพิ่มได้"
+                    : "คุณมีใบจองที่รอเจ้าของหอตอบรับอยู่แล้ว กรุณายกเลิกใบจองเดิมก่อนจองห้องใหม่",
+            });
             return;
         }
 

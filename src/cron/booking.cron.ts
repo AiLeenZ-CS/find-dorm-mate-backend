@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ตั้ง cron job ที่รันทุก 5 นาที ตรวจหาใบจองที่หมดอายุ (Pending เกิน 3 วัน)
+// แล้วปรับสถานะเป็น Expired พร้อมคืนสต๊อกห้องและแจ้งเตือนสมาชิกอัตโนมัติ ถูกเรียกเริ่มทำงานจาก server.ts
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma';
 import { createNotification } from '../utils/notifications';

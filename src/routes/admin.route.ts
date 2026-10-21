@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/admin (จัดการสมาชิก, เจ้าของหอ, หอพัก, รายงาน,
+// บัญชี Admin, สิ่งอำนวยความสะดวก) เข้ากับ admin.controller.ts ทุก route ต้อง login เป็น Admin/Master_Admin
 import { Router } from 'express';
 import {
   listMembers,

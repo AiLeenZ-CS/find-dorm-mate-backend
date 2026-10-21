@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint สาธารณะ /api/images/proxy สำหรับสตรีมรูปภาพ public
+// (หอพัก/ห้องพัก/โปรไฟล์) จาก Firebase Storage ผ่าน image-proxy.controller.ts โดยไม่ต้อง login
 import { Router } from 'express';
 import { getPublicProxiedImage } from '../controllers/image-proxy.controller';
 

@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: รวม helper กลางสำหรับทำ pagination (parsePagination อ่าน page/limit
+// จาก query string, buildMeta สร้างข้อมูล meta) ใช้ร่วมกันในหลาย controller ที่ต้องแบ่งหน้ารายการ
 import { Request } from 'express';
 
 export interface PaginationParams {

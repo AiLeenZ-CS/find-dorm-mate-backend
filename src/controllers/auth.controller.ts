@@ -1,10 +1,10 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบสมัคร/เข้าสู่ระบบและโปรไฟล์ผู้ใช้ — สมัครสมาชิก/เจ้าของหอพัก
+// ล็อกอิน (ปกติ + Google) ดู/แก้ไขโปรไฟล์ อัปโหลดรูป ลืม/เปลี่ยนรหัสผ่าน และออก Firebase Token สำหรับแชท
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
-// 🚀 import เฉยๆไว้ตรงนี้ (ไม่ได้เรียกใช้ตรงๆ) เพื่อให้ type augmentation ของ @types/multer
-// (เพิ่ม req.file ให้ Express.Request) มีผลทั้งไฟล์ — ตัว multer({...}) จริงตั้งไว้ที่ route
 import type {} from 'multer';
 import { JWT_SECRET } from '../config/jwt';
 import { BACKEND_PUBLIC_URL, SMTP_USER, SMTP_APP_PASSWORD } from '../config/env';
@@ -29,7 +29,7 @@ async function generateUniqueUsername(
   return candidate;
 }
 
-// 🚀 ข้อความแจ้งสถานะคำร้องขอเป็นเจ้าของหอพัก (ใช้ตอนเจ้าของหอพักพยายามเข้าสู่ระบบ)
+// ข้อความแจ้งสถานะคำร้องขอเป็นเจ้าของหอพัก (ใช้ตอนเจ้าของหอพักพยายามเข้าสู่ระบบ)
 function ownerStatusMessage(status: string, adminNote?: string | null): string {
   if (status === 'Rejected') {
     return adminNote
@@ -40,7 +40,6 @@ function ownerStatusMessage(status: string, adminNote?: string | null): string {
 }
 
 // [POST] API: สมัครสมาชิก (Member) หรือ ยื่นคำร้องเป็นเจ้าของหอพัก (Owner)
-// 🚀 ตอนนี้ Member กับ Owner แยกคนละตาราง (D1_Members / D2_Owners) กันคนละบัญชีกันเลย
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
@@ -540,7 +539,6 @@ export const completeProfile = async (req: Request, res: Response): Promise<void
 
 export const getMemberProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    // 💡 ดึง ID จากพารามิเตอร์ (เช่น /api/members/1)
     const memberId = Number(req.params.id);
 
     if (isNaN(memberId)) {
@@ -548,16 +546,13 @@ export const getMemberProfile = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    // 🚀 ดูได้เฉพาะโปรไฟล์ของตัวเอง (กัน enumerate ID ดึงอีเมล/เบอร์โทรคนอื่น)
     if (req.user!.id !== memberId) {
       res.status(403).json({ message: "คุณไม่มีสิทธิ์ดูข้อมูลนี้" });
       return;
     }
 
-    // ค้นหาข้อมูลใน Database (เปลี่ยนชื่อตาราง 'd1_Members' ให้ตรงกับ schema ของคุณ)
     const member = await prisma.d1_Members.findUnique({
       where: { Member_ID: memberId },
-      // 🚨 ใช้ 'select' เพื่อเลือกเฉพาะฟิลด์ที่ปลอดภัย ห้ามดึงรหัสผ่านออกมา!
       select: {
         Member_ID: true,
         First_Name: true,

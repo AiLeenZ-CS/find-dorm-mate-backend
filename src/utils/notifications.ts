@@ -1,3 +1,6 @@
+// 📄 ไฟล์นี้ทำหน้าที่: รวมฟังก์ชันสร้างการแจ้งเตือนกลางของระบบ — บันทึกแจ้งเตือนลง MySQL
+// และยิง Push Notification ผ่าน Firebase Cloud Messaging ไปยังทุกอุปกรณ์ของผู้รับ ให้ controller
+// อื่นเรียกใช้หลังทำ action หลักสำเร็จ
 import { prisma } from '../lib/prisma';
 import { getMessaging, isFirebaseAdminConfigured } from '../config/firebase-admin';
 

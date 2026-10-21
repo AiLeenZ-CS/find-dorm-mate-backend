@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller ของระบบแจ้งเตือนในแอป — ดึงรายการ/จำนวนที่ยังไม่อ่าน มาร์กอ่านแล้ว
+// และจัดการ FCM Device Token สำหรับยิง push notification
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { recipientTypeFromRole } from '../utils/notifications';

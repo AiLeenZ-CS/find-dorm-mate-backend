@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: controller สำหรับสตรีมรูปภาพจาก Firebase Storage ผ่าน backend — แยกเส้นทาง
+// เอกสารอ่อนไหว (ต้องผ่านสิทธิ์ Admin) กับรูปทั่วไปที่เข้าถึงได้แบบ public
 import { Request, Response } from 'express';
 import { getStorageBucket, isFirebaseAdminConfigured } from '../config/firebase-admin';
 import { isAllowedImagePath, isPublicImagePath } from '../utils/image-proxy';

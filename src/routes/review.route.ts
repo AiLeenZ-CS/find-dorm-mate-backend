@@ -1,3 +1,5 @@
+// 📄 ไฟล์นี้ทำหน้าที่: ผูก endpoint กลุ่ม /api/reviews (ดูรีวิวหอพักแบบ public และเขียน/แก้ไข/ลบ
+// รีวิวฝั่งสมาชิก) เข้ากับ review.controller.ts
 import { Router } from 'express';
 import {
     createReview,
