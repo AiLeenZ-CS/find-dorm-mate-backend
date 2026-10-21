@@ -215,7 +215,7 @@ model D8_Bookings {
   Booking_ID       Int       @id @default(autoincrement())
   Expected_Move_In DateTime? @db.Date
   Note_To_Owner    String?   @db.Text
-  Booking_Status   String    @default("Pending") // 'Pending', 'Confirmed', 'Rejected', 'Cancelled', 'Expired'
+  Booking_Status   String    @default("Pending") // 'Pending', 'Confirmed', 'Rejected', 'Cancelled', 'Expired', 'Moved_Out'
   Reject_Reason    String?   @db.Text
   Requested_At     DateTime  @default(now())
   Response_At      DateTime?

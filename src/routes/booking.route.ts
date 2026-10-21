@@ -7,6 +7,7 @@ import {
     createBooking,
     getMyBookings,
     getOwnerBookings,
+    moveOutBooking,
     rejectBooking,
     reportBooking,
 } from '../controllers/booking.controller';
@@ -23,6 +24,7 @@ router.patch('/:id/cancel', verifyToken, requireRole('Member'), cancelBooking);
 router.get('/owner', verifyToken, requireRole('Owner'), getOwnerBookings);
 router.patch('/:id/confirm', verifyToken, requireRole('Owner'), confirmBooking);
 router.patch('/:id/reject', verifyToken, requireRole('Owner'), rejectBooking);
+router.patch('/:id/move-out', verifyToken, requireRole('Owner'), moveOutBooking);
 router.post('/:id/report', verifyToken, requireRole('Owner'), reportBooking);
 
 export default router;

@@ -823,12 +823,19 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     const resetLink = `${BACKEND_PUBLIC_URL}/api/auth/reset-redirect/${userId}/${token}`;
 
     // ตั้งค่าคนส่งอีเมล (อ่านจาก .env เสมอ ห้าม hardcode credential ลงซอร์ส)
+    // 🚨 ต้องกำหนด timeout เอง — ค่า default ของ nodemailer ไม่มี timeout เลย ถ้า host ที่ deploy
+    // อยู่ (เช่น Railway) บล็อก outbound port SMTP (465/587) ตาม policy กันสแปมทั่วไปของ PaaS
+    // การเชื่อมต่อจะค้างเงียบๆ ไม่ error ไม่ timeout เอง ทำให้ request ทั้งอันค้างไม่ตอบกลับเลย
+    // (หน้าแอปฝั่ง client เห็นเป็นปุ่มหมุนค้างตลอดไป) ใส่ timeout ไว้ให้ fail ไวแทนค้างไม่จำกัดเวลา
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: SMTP_USER,
         pass: SMTP_APP_PASSWORD,
-      }
+      },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
     });
 
     // ส่งอีเมล

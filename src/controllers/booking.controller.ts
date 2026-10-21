@@ -386,6 +386,65 @@ export const rejectBooking = async (req: Request, res: Response): Promise<void> 
 };
 
 // ==========================================
+// 🚀 API: เจ้าของหอแจ้งย้ายออก (ปิดการเช่าของใบจองที่ Confirmed อยู่) — คืนสต๊อกห้อง
+// และทำให้สมาชิกคนนี้ไม่มีใบจอง active ค้างอยู่อีกต่อไป (เช็คใน createBooking) จองห้องใหม่ได้ทันที
+// ==========================================
+export const moveOutBooking = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const bookingId = Number(req.params.id);
+        const ownerId = req.user!.id;
+
+        const booking = await prisma.d8_Bookings.findUnique({
+            where: { Booking_ID: bookingId },
+            include: { Dorm: { select: { Owner_ID: true, Dorm_Name: true } } },
+        });
+
+        if (!booking) {
+            res.status(404).json({ message: "ไม่พบใบจองนี้ในระบบ" });
+            return;
+        }
+        if (booking.Dorm?.Owner_ID !== Number(ownerId)) {
+            res.status(403).json({ message: "คุณไม่มีสิทธิ์ดำเนินการกับใบจองนี้" });
+            return;
+        }
+        if (booking.Booking_Status !== 'Confirmed') {
+            res.status(400).json({ message: "แจ้งย้ายออกได้เฉพาะใบจองที่ยืนยันแล้วเท่านั้น" });
+            return;
+        }
+
+        await prisma.$transaction(async (tx) => {
+            const result = await tx.d8_Bookings.updateMany({
+                where: { Booking_ID: bookingId, Booking_Status: 'Confirmed' },
+                data: { Booking_Status: 'Moved_Out', Response_At: new Date() },
+            });
+
+            if (result.count === 0) {
+                throw new Error("ใบจองนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้าจอ");
+            }
+            if (booking.Room_Type_ID) {
+                await releaseRoomStock(tx, booking.Room_Type_ID);
+            }
+        });
+
+        if (booking.Member_ID) {
+            await createNotification({
+                recipientType: 'Member',
+                recipientId: booking.Member_ID,
+                type: 'Booking_Moved_Out',
+                title: 'แจ้งย้ายออกจากหอพัก',
+                body: `เจ้าของหอแจ้งว่าคุณย้ายออกจาก "${booking.Dorm?.Dorm_Name ?? 'หอพัก'}" แล้ว คุณสามารถจองห้องพักใหม่ได้`,
+                link: '/my-bookings',
+            });
+        }
+
+        res.status(200).json({ message: "แจ้งย้ายออกสำเร็จ คืนสต๊อกห้องเรียบร้อยแล้ว" });
+    } catch (error: any) {
+        console.error("Move Out Booking Error:", error);
+        res.status(400).json({ message: error?.message || "เกิดข้อผิดพลาดในการแจ้งย้ายออก" });
+    }
+};
+
+// ==========================================
 // 🚀 API: เจ้าของหอรายงานผู้ใช้
 // รายงานได้ทั้งใบจองที่ยังรอตอบรับ (Pending — เช่น พฤติกรรมไม่เหมาะสมตั้งแต่ก่อนตอบรับ)
 // และใบจองที่ยืนยันแล้ว (Confirmed — เช่น จองแล้วไม่มารับห้อง/ไม่จ่ายเงิน)

@@ -674,7 +674,7 @@ export const respondToMatchRequest = async (req: Request, res: Response): Promis
             return;
         }
 
-        const postClosed = await prisma.$transaction(async (tx) => {
+        const { postClosed, autoUnmatchedMemberIds } = await prisma.$transaction(async (tx) => {
             // 🛡️ เช็คซ้ำแบบ Atomic กันชนกับการกดพร้อมกันหลายครั้ง/หลายแท็บ
             const result = await tx.d7_Roommate_Matches.updateMany({
                 where: { Match_ID: matchId, Match_Status: 'Pending' },
@@ -685,7 +685,9 @@ export const respondToMatchRequest = async (req: Request, res: Response): Promis
                 throw new Error("คำขอนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้าจอ");
             }
 
-            if (status !== 'Matched' || !match.Post_ID) return false;
+            if (status !== 'Matched' || !match.Post_ID) {
+                return { postClosed: false, autoUnmatchedMemberIds: [] as number[] };
+            }
 
             // 🚀 ได้คู่จับคู่ครบตามจำนวนที่ต้องการ (Req_Persons) แล้ว -> ปิดประกาศอัตโนมัติ
             // ('Found' ไม่ใช่ 'Searching' แล้ว จึงไม่โผล่ในหน้า Feed อีกต่อไป เพราะ getAllPosts
@@ -694,13 +696,35 @@ export const respondToMatchRequest = async (req: Request, res: Response): Promis
                 where: { Post_ID: match.Post_ID, Match_Status: 'Matched' },
             });
             const reqPersons = match.Post?.Req_Persons ?? 1;
-            if (matchedCount < reqPersons) return false;
+            if (matchedCount < reqPersons) {
+                return { postClosed: false, autoUnmatchedMemberIds: [] as number[] };
+            }
 
             await tx.d6_Roommate_Posts.update({
                 where: { Post_ID: match.Post_ID },
                 data: { Post_Status: 'Found' },
             });
-            return true;
+
+            // 🚀 ประกาศปิดแล้ว (ได้รูมเมทครบ) -> คำขออื่นที่ยังค้าง Pending อยู่ของประกาศนี้
+            // จะไม่มีวันถูกตอบรับ/ปฏิเสธอีกต่อไป ต้องยกเลิกให้อัตโนมัติเป็น 'Unmatched' (ไม่ใช่
+            // 'Rejected' เพราะเจ้าของประกาศไม่ได้ปฏิเสธคนนี้ แค่เลือกคนอื่นจนครบจำนวนก่อน) ไม่งั้น
+            // คนที่ค้างเป็น Pending จะโดนกฎ "มีคำขอค้างได้แค่ 1 คำขอ" (ดู sendMatchRequest) บล็อก
+            // ไปขอจับคู่ประกาศอื่นไม่ได้เลย ทั้งที่ประกาศนี้ปิดไปแล้วจะไม่มีวันตอบรับคำขอนั้น
+            const otherPending = await tx.d7_Roommate_Matches.findMany({
+                where: { Post_ID: match.Post_ID, Match_Status: 'Pending' },
+                select: { Member_ID: true },
+            });
+            await tx.d7_Roommate_Matches.updateMany({
+                where: { Post_ID: match.Post_ID, Match_Status: 'Pending' },
+                data: { Match_Status: 'Unmatched', Response_Date: new Date() },
+            });
+
+            return {
+                postClosed: true,
+                autoUnmatchedMemberIds: otherPending
+                    .map((m) => m.Member_ID)
+                    .filter((id): id is number => id != null),
+            };
         });
 
         // 🚀 เปิดห้องแชท Firestore ให้เจ้าของประกาศ + สมาชิกที่เพิ่งอนุมัติ (นอก transaction
@@ -731,6 +755,18 @@ export const respondToMatchRequest = async (req: Request, res: Response): Promis
                 type: 'Post_Fully_Matched',
                 title: 'จับคู่รูมเมทครบแล้ว พร้อมจองห้องได้เลย!',
                 body: 'ประกาศของคุณได้รูมเมทครบตามจำนวนที่ต้องการแล้ว กดจองห้องได้ที่หน้ารูมเมทของฉัน',
+                link: '/my-roommate-matches',
+            });
+        }
+        // 🚀 แจ้งเตือนคนอื่นที่คำขอค้าง Pending อยู่ของประกาศนี้ ว่าถูกยกเลิกให้อัตโนมัติ
+        // เพราะประกาศปิดไปแล้ว (ไม่ใช่เพราะเจ้าของประกาศปฏิเสธคนนี้โดยตรง) ไปหาประกาศอื่นได้เลย
+        for (const memberId of autoUnmatchedMemberIds) {
+            await createNotification({
+                recipientType: 'Member',
+                recipientId: memberId,
+                type: 'Match_Auto_Unmatched',
+                title: 'คำขอจับคู่ถูกยกเลิก',
+                body: 'ประกาศนี้ได้รูมเมทครบจำนวนแล้วก่อนที่เจ้าของประกาศจะตอบรับคำขอของคุณ ลองหาประกาศอื่นดูได้นะ',
                 link: '/my-roommate-matches',
             });
         }
@@ -1027,12 +1063,17 @@ export const bookFromPost = async (req: Request, res: Response): Promise<void> =
         }
         const roomTypeId = post.Room_Type_ID;
 
-        // --- 🛡️ ห้ามมีใบจอง Pending ซ้ำสำหรับห้องประเภทเดิม (เงื่อนไขเดียวกับ createBooking) ---
-        const existingBooking = await prisma.d8_Bookings.findFirst({
-            where: { Member_ID: memberId, Room_Type_ID: roomTypeId, Booking_Status: 'Pending' },
+        // --- 🛡️ จองได้ทีละห้องเท่านั้น — เงื่อนไขเดียวกับ createBooking ใน booking.controller.ts
+        // (ห้ามมีใบจอง Pending/Confirmed ค้างอยู่ไม่ว่าห้อง/หอไหน ไม่ใช่แค่ห้องประเภทเดิม) ---
+        const activeBooking = await prisma.d8_Bookings.findFirst({
+            where: { Member_ID: memberId, Booking_Status: { in: ['Pending', 'Confirmed'] } },
         });
-        if (existingBooking) {
-            res.status(400).json({ message: "คุณมีใบจองที่รอดำเนินการสำหรับห้องพักประเภทนี้อยู่แล้ว" });
+        if (activeBooking) {
+            res.status(400).json({
+                message: activeBooking.Booking_Status === 'Confirmed'
+                    ? "คุณมีห้องพักที่จองและยืนยันแล้วอยู่ ไม่สามารถจองห้องอื่นเพิ่มได้"
+                    : "คุณมีใบจองที่รอเจ้าของหอตอบรับอยู่แล้ว กรุณายกเลิกใบจองเดิมก่อนจองห้องใหม่",
+            });
             return;
         }
 

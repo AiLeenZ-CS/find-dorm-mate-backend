@@ -6,7 +6,7 @@ import { parsePagination, buildMeta } from '../utils/pagination';
 import { toImageProxyRef } from '../utils/image-proxy';
 
 // ==========================================
-// 🚀 API: สมาชิกเขียนรีวิวหอพัก — ต้องมีใบจองที่ยืนยันแล้ว (Confirmed) ของหอนั้นๆ
+// 🚀 API: สมาชิกเขียนรีวิวหอพัก — ต้องมีใบจองที่ยืนยันแล้ว (Confirmed) หรือย้ายออกแล้ว (Moved_Out) ของหอนั้นๆ
 // และรีวิวได้แค่ 1 ครั้งต่อใบจอง (กันสแปม/รีวิวซ้ำ)
 // ==========================================
 export const createReview = async (req: Request, res: Response): Promise<void> => {
@@ -30,8 +30,8 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
             res.status(403).json({ message: "คุณไม่มีสิทธิ์รีวิวใบจองนี้" });
             return;
         }
-        if (booking.Booking_Status !== 'Confirmed') {
-            res.status(400).json({ message: "รีวิวได้เฉพาะใบจองที่ยืนยันแล้วเท่านั้น" });
+        if (!['Confirmed', 'Moved_Out'].includes(booking.Booking_Status)) {
+            res.status(400).json({ message: "รีวิวได้เฉพาะใบจองที่ยืนยันแล้ว (หรือย้ายออกแล้ว) เท่านั้น" });
             return;
         }
 
