@@ -4,14 +4,14 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Resend } from 'resend';
+import { BrevoClient } from '@getbrevo/brevo';
 import type {} from 'multer';
 import { JWT_SECRET } from '../config/jwt';
-import { BACKEND_PUBLIC_URL, RESEND_API_KEY } from '../config/env';
+import { BACKEND_PUBLIC_URL, BREVO_API_KEY, BREVO_SENDER_EMAIL } from '../config/env';
 import { getFirebaseAuth, getStorageBucket, isFirebaseAdminConfigured } from '../config/firebase-admin';
 import { sanitizeImageInput, toImageProxyRef } from '../utils/image-proxy';
 
-const resend = new Resend(RESEND_API_KEY);
+const brevo = new BrevoClient({ apiKey: BREVO_API_KEY });
 
 // 🚀 สร้าง Username อัตโนมัติจากส่วนหน้าอีเมล (ก่อน @) ถ้าซ้ำจะต่อเลขท้ายให้จนกว่าจะไม่ซ้ำ
 async function generateUniqueUsername(
@@ -823,27 +823,21 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     const token = jwt.sign(payload, secret, { expiresIn: '15m' });
     const resetLink = `${BACKEND_PUBLIC_URL}/api/auth/reset-redirect/${userId}/${token}`;
 
-    // 🚀 ส่งผ่าน Resend (HTTPS API) แทน SMTP ตรงๆ — ไม่มี PaaS ไหนบล็อก port 443 เหมือนที่เจอ
+    // 🚀 ส่งผ่าน Brevo (HTTPS API) แทน SMTP ตรงๆ — ไม่มี PaaS ไหนบล็อก port 443 เหมือนที่เจอ
     // ปัญหา SMTP ถูกบล็อกมาแล้วทั้งบน Railway และ Render (ดูที่มาเพิ่มเติมใน config/env.ts)
-    // ใช้ onboarding@resend.dev เป็นผู้ส่งได้เลยโดยไม่ต้อง verify โดเมนเอง (ข้อจำกัดของ sandbox
-    // คือส่งได้แค่ไปอีเมลที่ยืนยันเจ้าของบัญชี Resend ไว้ จนกว่าจะ verify โดเมนของจริง)
-    const { error: resendError } = await resend.emails.send({
-      from: 'Find Dorm Mate <onboarding@resend.dev>',
-      to: user.Email,
+    // ใช้อีเมลผู้ส่งที่ verify ไว้กับ Brevo แล้ว (BREVO_SENDER_EMAIL) — Brevo ต่างจาก Resend
+    // ตรงที่แค่ verify sender email เดียว (ไม่ต้องมีโดเมนของตัวเอง) ก็ส่งไปผู้รับไหนก็ได้ทันที
+    await brevo.transactionalEmails.sendTransacEmail({
+      sender: { email: BREVO_SENDER_EMAIL!, name: 'Find Dorm Mate' },
+      to: [{ email: user.Email! }],
       subject: 'รีเซ็ตรหัสผ่านแอป Find a Dorm Mate',
-      html: `
+      htmlContent: `
               <h3>สวัสดีครับ,</h3>
               <p>คุณได้ทำการร้องขอเปลี่ยนรหัสผ่าน คลิกลิงก์ด้านล่างเพื่อตั้งรหัสผ่านใหม่ (ลิงก์มีอายุ 15 นาที)</p>
               <a href="${resetLink}" style="padding: 10px 20px; background-color: #673AB7; color: white; text-decoration: none; border-radius: 5px;">ตั้งรหัสผ่านใหม่</a>
               <p>หากคุณไม่ได้ทำรายการนี้ กรุณาละเว้นอีเมลฉบับนี้</p>
             `
     });
-
-    if (resendError) {
-      console.error('Resend error:', resendError);
-      res.status(500).json({ message: "เกิดข้อผิดพลาดในการส่งอีเมล" });
-      return;
-    }
 
     res.status(200).json({ message: "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว กรุณาเช็คกล่องจดหมาย" });
   } catch (error) {
