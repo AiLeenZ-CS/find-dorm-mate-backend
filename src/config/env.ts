@@ -14,11 +14,14 @@ export const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
   : null;
 
-export const SMTP_USER = process.env.SMTP_USER;
-export const SMTP_APP_PASSWORD = process.env.SMTP_APP_PASSWORD;
+// 🚨 เลิกใช้ SMTP (nodemailer) แล้ว เปลี่ยนมาใช้ Resend (ส่งอีเมลผ่าน HTTPS API แทน) เพราะ
+// PaaS ฟรี/ราคาถูกแทบทุกเจ้า (ทั้ง Railway และ Render ที่เคยลองมา) บล็อก outbound SMTP port
+// (465/587) เป็น policy กันสแปม ทำให้ nodemailer ต่อไม่ติดเงียบๆ จนกว่าจะ timeout ทุกครั้ง —
+// Resend ส่งผ่าน port 443 (HTTPS) เหมือน API เรียกทั่วไป ไม่มี PaaS ไหนบล็อก
+export const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
-if (!SMTP_USER || !SMTP_APP_PASSWORD) {
+if (!RESEND_API_KEY) {
   console.warn(
-    '⚠️  ไม่พบ SMTP_USER/SMTP_APP_PASSWORD ใน .env — ฟีเจอร์ลืมรหัสผ่าน (ส่งอีเมล) จะใช้งานไม่ได้จนกว่าจะตั้งค่า'
+    '⚠️  ไม่พบ RESEND_API_KEY ใน .env — ฟีเจอร์ลืมรหัสผ่าน (ส่งอีเมล) จะใช้งานไม่ได้จนกว่าจะตั้งค่า'
   );
 }

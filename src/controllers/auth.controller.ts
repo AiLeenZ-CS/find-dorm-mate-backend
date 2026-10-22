@@ -4,13 +4,14 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import type {} from 'multer';
 import { JWT_SECRET } from '../config/jwt';
-import { BACKEND_PUBLIC_URL, SMTP_USER, SMTP_APP_PASSWORD } from '../config/env';
+import { BACKEND_PUBLIC_URL, RESEND_API_KEY } from '../config/env';
 import { getFirebaseAuth, getStorageBucket, isFirebaseAdminConfigured } from '../config/firebase-admin';
 import { sanitizeImageInput, toImageProxyRef } from '../utils/image-proxy';
 
+const resend = new Resend(RESEND_API_KEY);
 
 // 🚀 สร้าง Username อัตโนมัติจากส่วนหน้าอีเมล (ก่อน @) ถ้าซ้ำจะต่อเลขท้ายให้จนกว่าจะไม่ซ้ำ
 async function generateUniqueUsername(
@@ -822,25 +823,12 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
     const token = jwt.sign(payload, secret, { expiresIn: '15m' });
     const resetLink = `${BACKEND_PUBLIC_URL}/api/auth/reset-redirect/${userId}/${token}`;
 
-    // ตั้งค่าคนส่งอีเมล (อ่านจาก .env เสมอ ห้าม hardcode credential ลงซอร์ส)
-    // 🚨 ต้องกำหนด timeout เอง — ค่า default ของ nodemailer ไม่มี timeout เลย ถ้า host ที่ deploy
-    // อยู่ (เช่น Railway) บล็อก outbound port SMTP (465/587) ตาม policy กันสแปมทั่วไปของ PaaS
-    // การเชื่อมต่อจะค้างเงียบๆ ไม่ error ไม่ timeout เอง ทำให้ request ทั้งอันค้างไม่ตอบกลับเลย
-    // (หน้าแอปฝั่ง client เห็นเป็นปุ่มหมุนค้างตลอดไป) ใส่ timeout ไว้ให้ fail ไวแทนค้างไม่จำกัดเวลา
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_APP_PASSWORD,
-      },
-      connectionTimeout: 10_000,
-      greetingTimeout: 10_000,
-      socketTimeout: 10_000,
-    });
-
-    // ส่งอีเมล
-    await transporter.sendMail({
-      from: `"Find Dorm Mate" <${SMTP_USER}>`,
+    // 🚀 ส่งผ่าน Resend (HTTPS API) แทน SMTP ตรงๆ — ไม่มี PaaS ไหนบล็อก port 443 เหมือนที่เจอ
+    // ปัญหา SMTP ถูกบล็อกมาแล้วทั้งบน Railway และ Render (ดูที่มาเพิ่มเติมใน config/env.ts)
+    // ใช้ onboarding@resend.dev เป็นผู้ส่งได้เลยโดยไม่ต้อง verify โดเมนเอง (ข้อจำกัดของ sandbox
+    // คือส่งได้แค่ไปอีเมลที่ยืนยันเจ้าของบัญชี Resend ไว้ จนกว่าจะ verify โดเมนของจริง)
+    const { error: resendError } = await resend.emails.send({
+      from: 'Find Dorm Mate <onboarding@resend.dev>',
       to: user.Email,
       subject: 'รีเซ็ตรหัสผ่านแอป Find a Dorm Mate',
       html: `
@@ -850,6 +838,12 @@ export const forgotPassword = async (req: Request, res: Response): Promise<void>
               <p>หากคุณไม่ได้ทำรายการนี้ กรุณาละเว้นอีเมลฉบับนี้</p>
             `
     });
+
+    if (resendError) {
+      console.error('Resend error:', resendError);
+      res.status(500).json({ message: "เกิดข้อผิดพลาดในการส่งอีเมล" });
+      return;
+    }
 
     res.status(200).json({ message: "ส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลแล้ว กรุณาเช็คกล่องจดหมาย" });
   } catch (error) {
