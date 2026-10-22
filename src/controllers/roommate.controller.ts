@@ -467,6 +467,20 @@ export const sendMatchRequest = async (req: Request, res: Response): Promise<voi
             return;
         }
 
+        // 🛡️ เช็คอีกฝั่ง — คนที่เป็น "เจ้าของประกาศ" ของตัวเองแล้วจับคู่รูมเมทครบจนประกาศปิด
+        // (Post_Status = 'Found') ก็ถือว่ามีรูมเมท/ห้องเรียบร้อยแล้วเหมือนกัน ห้ามไปขอจับคู่
+        // ประกาศของคนอื่นต่ออีก — เช็คแยกจาก D7_Roommate_Matches ด้านบน เพราะตารางนั้นเก็บแค่ฝั่ง
+        // "ผู้ขอ" (Member_ID คือคนส่งคำขอ) เจ้าของประกาศที่ได้รับการอนุมัติจะไม่มีแถวของตัวเองอยู่เลย
+        const ownFoundPost = await prisma.d6_Roommate_Posts.findFirst({
+            where: { Member_ID: memberId, Post_Status: 'Found' },
+        });
+        if (ownFoundPost) {
+            res.status(400).json({
+                message: "คุณจับคู่รูมเมทของประกาศตัวเองครบแล้ว ไม่สามารถส่งคำขอจับคู่ประกาศอื่นได้อีก",
+            });
+            return;
+        }
+
         const match = await prisma.d7_Roommate_Matches.create({
             data: {
                 Post_ID: postId,

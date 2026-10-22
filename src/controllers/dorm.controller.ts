@@ -302,6 +302,46 @@ export const updateDorm = async (req: Request, res: Response): Promise<void> => 
     }
 };
 
+// [DELETE] API: เจ้าของหอพักลบหอพักของตัวเอง — ลบได้เฉพาะตอนไม่มีใครจอง/เข้าพักอยู่ในห้องพัก
+// ประเภทไหนของหอนี้เลยเท่านั้น (เช็คจากใบจองสถานะ Pending/Confirmed ทั่วทั้งหอ ไม่ใช่แค่ห้องเดียว)
+// ลบแล้วห้องพักทุกประเภท/รีวิว/ประกาศหารูมเมทของหอนี้จะถูกลบตามไปด้วย (onDelete: Cascade ใน schema)
+export const deleteDorm = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const dormId = Number(req.params.id);
+        if (isNaN(dormId)) {
+            res.status(400).json({ message: "ID ไม่ถูกต้อง" });
+            return;
+        }
+
+        const dorm = await prisma.d3_Dormitories.findUnique({ where: { Dorm_ID: dormId } });
+        if (!dorm) {
+            res.status(404).json({ message: "ไม่พบหอพักนี้ในระบบ" });
+            return;
+        }
+        if (dorm.Owner_ID !== req.user!.id) {
+            res.status(403).json({ message: "คุณไม่มีสิทธิ์ลบหอพักนี้" });
+            return;
+        }
+
+        const activeBookingCount = await prisma.d8_Bookings.count({
+            where: { Dorm_ID: dormId, Booking_Status: { in: ['Pending', 'Confirmed'] } },
+        });
+        if (activeBookingCount > 0) {
+            res.status(400).json({
+                message: "ไม่สามารถลบหอพักนี้ได้ เนื่องจากมีห้องที่กำลังจองหรือมีผู้เข้าพักอยู่",
+            });
+            return;
+        }
+
+        await prisma.d3_Dormitories.delete({ where: { Dorm_ID: dormId } });
+
+        res.status(200).json({ message: "ลบหอพักสำเร็จ" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบหอพัก" });
+    }
+};
+
 // [GET] API: ดึงรายการหอพักของตัวเอง (สำหรับ Owner Dashboard)
 export const getDormsByOwnerId = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -461,6 +501,48 @@ export const updateRoomType = async (req: Request, res: Response): Promise<void>
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "เกิดข้อผิดพลาดในการแก้ไขห้องพัก" });
+    }
+};
+
+// [DELETE] API: เจ้าของหอพักลบห้องพักประเภทนี้ — ลบได้เฉพาะตอนไม่มีใครจอง/เข้าพักอยู่เท่านั้น
+// (เช็คจากใบจองสถานะ Pending/Confirmed ของห้องพักประเภทนี้โดยเฉพาะ)
+export const deleteRoomType = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const roomId = Number(req.params.id);
+        if (isNaN(roomId)) {
+            res.status(400).json({ message: "ID ห้องพักไม่ถูกต้อง" });
+            return;
+        }
+
+        const room = await prisma.d4_Room_Types.findUnique({
+            where: { Room_Type_ID: roomId },
+            include: { Dorm: { select: { Owner_ID: true } } },
+        });
+        if (!room) {
+            res.status(404).json({ message: "ไม่พบห้องพักนี้ในระบบ" });
+            return;
+        }
+        if (room.Dorm?.Owner_ID !== req.user!.id) {
+            res.status(403).json({ message: "คุณไม่มีสิทธิ์ลบห้องพักนี้" });
+            return;
+        }
+
+        const activeBookingCount = await prisma.d8_Bookings.count({
+            where: { Room_Type_ID: roomId, Booking_Status: { in: ['Pending', 'Confirmed'] } },
+        });
+        if (activeBookingCount > 0) {
+            res.status(400).json({
+                message: "ไม่สามารถลบห้องพักนี้ได้ เนื่องจากมีคนกำลังจองหรือเข้าพักอยู่",
+            });
+            return;
+        }
+
+        await prisma.d4_Room_Types.delete({ where: { Room_Type_ID: roomId } });
+
+        res.status(200).json({ message: "ลบห้องพักสำเร็จ" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "เกิดข้อผิดพลาดในการลบห้องพัก" });
     }
 };
 
